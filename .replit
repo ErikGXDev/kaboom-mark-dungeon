@@ -1,0 +1,1 @@
+run = "npm install && npm run buildJsOnce && npm run runServer"

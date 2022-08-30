@@ -1,0 +1,14 @@
+{
+    "scripts": {
+        "runServer": "node index.js",
+        "testServer": "nodemon index.js",
+        "noMinifyJs": "npx esbuild src/main.js --bundle --keep-names --sourcemap --target=es6 --watch --outfile=dist/dist.js",
+        "buildJs": "npx esbuild src/main.js --bundle --minify --sourcemap --keep-names --target=es6 --watch --outfile=dist/dist.js",
+        "buildJsOnce": "npx esbuild src/main.js --bundle --minify --sourcemap --keep-names --target=es6 --outfile=dist/dist.js"
+    },
+    "dependencies": {
+        "esbuild": "^0.14.48",
+        "express": "^4.18.1",
+        "kaboom": "^2000.2.9"
+    }
+}
