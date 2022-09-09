@@ -12,13 +12,17 @@ kaboom({
 
 loadFont("rise", "sprites/rise.png", 8,10)
 
-function angleToVec2(angle) {
-    const x = Math.cos(-angle)
-    const y = Math.sin(-angle)
-    return vec2(x,y)
+function getRandom(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-loadSprite("bg", "sprites/dungeonbg.png")
+for (let i = 0; i < 16; i++) {
+    const element = i;
+    loadSprite("bg"+i, "sprites/bg/bg"+i+".png")
+}
+
 
 
 
@@ -119,6 +123,42 @@ loadSpriteAtlas("sprites/dungeon1.png", {
             }
         }
     },
+    "bean": {
+        x:16*4,
+        y:16*2,
+        width: 32,
+        height:16,
+        sliceX: 2,
+        anims: {
+            "hit": {
+                from:1,to:0
+            }
+        }
+    },
+    "cursedbean": {
+        x:16*4,
+        y:16*3,
+        width: 32,
+        height:16,
+        sliceX: 2,
+        anims: {
+            "hit": {
+                from:1,to:0
+            }
+        }
+    },
+    "ghostmark": {
+        x:16*4,
+        y:16*4,
+        width: 32,
+        height:16,
+        sliceX: 2,
+        anims: {
+            "hit": {
+                from:1,to:0
+            }
+        }
+    },
     "sword1": {
         x:16*3,
         y:16*11,
@@ -208,6 +248,20 @@ loadSpriteAtlas("sprites/dungeon1.png", {
         height: 16
     }
 })
+loadSpriteAtlas("sprites/explosion.png", {
+    "explosion": {
+        x:0,
+        y:0,
+        width: 240,
+        height: 24,
+        sliceX: 10,
+        anims: {
+            "explosion": {
+                from:0,to:9
+            }
+        }
+    }
+})
 var level = 0.1
 
 var playerdata = {
@@ -224,7 +278,7 @@ var playerdata = {
     selected: "sword1",
     swords: 0,
     bombs: 0,
-    
+    audiotime: 0
 }
 
 var upgradecode = {
@@ -239,11 +293,27 @@ var upgradecode = {
 var player;
 var upgrades = [["dmg_bomb","dmg_sword"],["spd_bomb","spd_sword"],["cap_bomb","cap_sword"]]
 
+
+
 loadSound("music", "sounds/music.mp3")
+loadSound("loop1", "sounds/loop1.wav")
+loadSound("loop2", "sounds/loop2.wav")
+loadSound("loop3", "sounds/loop3.wav")
+
+loadSound("enemyhit", "sounds/enemyhit.wav")
+loadSound("playerhit","sounds/playerhit.wav")
+loadSound("coin1","sounds/coin1.wav")
+loadSound("bomb","sounds/bomb.wav")
+loadSound("blip", "sounds/blip.wav")
+
+var audiop;
+
+var enemies = [{id:"notmark",d:{}},{id:"unmark",speed:350,d:{}},{id:"rockmark",speed:100,hp:2,d:{rock:true}},{id:"bean",hp:4,d:{}},{id:"cursedbean",speed:400,hp:5,d:{}},{id:"ghostmark",hp:3,speed:500,d:{ghost:true}}]
 
 scene("main", () => {
+    var audiop = play("music", {loop: true,seek:playerdata.audiotime,volume:0.4})
     add([
-        sprite("bg"),
+        sprite("bg3"),
         pos(0,0),
         z(-5),
         scale(3)
@@ -279,19 +349,37 @@ scene("main", () => {
         scale(6),
         pos(width()/2,height()/2+80),
         origin("center"),
-        "playbtn"
+        "playbtn",
+        area()
     ])
 
     onClick("playbtn", (btn) => {
+        playerdata = {
+            levels: 0,
+            inv: false,
+            hp: 3,
+            coins: 0,
+            cap_sword: 1,
+            cap_bomb: 1,
+            spd_sword: 360/30,
+            spd_bomb: 4,
+            dmg_bomb: 1,
+            dmg_sword: 1,
+            selected: "sword1",
+            swords: 0,
+            bombs: 0,
+            audiotime: audiop.time()
+        }
+        level = 0.1
         go("round")
     })
 })
 
 scene("round", () => {
-    console.log(level)
+    var audiop = play("music", {loop: true,seek:playerdata.audiotime,volume:0.4})
     var update = false
     add([
-        sprite("bg"),
+        sprite("bg" + Math.min(Math.floor(playerdata.levels/2),15)),
         pos(0,0),
         z(-5),
         scale(3)
@@ -324,10 +412,17 @@ scene("round", () => {
     ])
 
     var ctext = add([
-        text(playerdata.coins + ""),
+        text(playerdata.coins + "c"),
         scale(3),
         pos(width()/2,height()-90),
         origin("top")
+    ])
+
+    var textt = add([
+        text(playerdata.levels+1),
+        scale(3),
+        pos(width()/2+180,63),
+        origin("right")
     ])
 
     let _scale = 0.93
@@ -374,63 +469,25 @@ scene("round", () => {
             }
             else if (chance(level/1.5)) {
                 let notmark;
-                if (level > 0.17 && chance(0.3)) {
-                    notmark = add([
-                        sprite("unmark"),
-                        pos(108+8*3+x*16*_scale*3,108+8*3+y*16*_scale*3),
-                        z(10),
-                        scale(_scale*_scalef),
-                        origin("center"),
-                        area({width:10,height:10}),
-                        solid(),
-                        "unmark",
-                        "enemy",
-                        "mover",
-                        "liver",
-                        health(4),
-                        {
-                            speed: 350
-                        }
-                    ])
-                } else if (level > 0.22 && chance(0.3)) {
-                    notmark = add([
-                        sprite("rockmark"),
-                        pos(108+8*3+x*16*_scale*3,108+8*3+y*16*_scale*3),
-                        z(10),
-                        scale(_scale*_scalef),
-                        origin("center"),
-                        area({width:10,height:10}),
-                        solid(),
-                        "unmark",
-                        "enemy",
-                        "mover",
-                        "liver",
-                        health(2),
-                        {
-                            rock: true,
-                            speed: 100,
-                        }
-                    ])
-                } else {
-                    notmark = add([
-                        sprite("notmark"),
-                        pos(108+8*3+x*16*_scale*3,108+8*3+y*16*_scale*3),
-                        z(10),
-                        scale(_scale*_scalef),
-                        origin("center"),
-                        area({width:10,height:10}),
-                        solid(),
-                        "notmark",
-                        "enemy",
-                        "mover",
-                        "liver",
-                        health(3),
-                        {
-                            speed: 200
-                        }
-                    ])
-                }
-                
+                let lvl = Math.floor(playerdata.levels/3)
+                let randr = getRandom(0,lvl)
+                let mark = enemies[randr]
+                console.log(lvl,mark,randr)
+                notmark = add([
+                    sprite(mark.id),
+                    pos(108+8*3+x*16*_scale*3,108+8*3+y*16*_scale*3),
+                    scale(3),
+                    origin("center"),
+                    area({width:13,height:13}),
+                    health((mark.hp ? mark.hp : 3)),
+                    (mark.d.ghost ? "ghost" : solid()),
+                    (mark.d || "undatad"),
+                    "enemy",
+                    "liver",
+                    {
+                        speed: (mark.speed ? mark.speed : 200)
+                    }
+                ])
                 
                 notmark.on("death", () => {
                     if (chance(0.1)) {
@@ -475,6 +532,7 @@ scene("round", () => {
     })
 
     if (get("enemy").length == 0) {
+        playerdata.audiotime = audiop.time()
         go("round")
     }
 
@@ -530,12 +588,12 @@ scene("round", () => {
                 {offset:0}
             ])
 
-            let s_speed = player.spd_sword
+            let s_speed = player.spd_sword*100
 
             sword.onUpdate(() => {
                 sword.moveTo(player.pos)
-                sword.angle += s_speed
-                sword.offset += s_speed
+                sword.angle += s_speed*dt()
+                sword.offset += s_speed*dt()
                 if (sword.offset >= 370) {
                     wait(0.5, () => {
                         player.swords--
@@ -566,6 +624,17 @@ scene("round", () => {
                     element.hurt()
                 }
                 player.bombs--
+                play("bomb")
+                let explosion = add([
+                    sprite("explosion"),
+                    pos(bomb.pos),
+                    origin("center"),
+                    scale(3)
+                ])
+                wait(1, () => {
+                    destroy(explosion)
+                })
+                explosion.play("explosion")
                 destroy(bomb)
             })
         }
@@ -613,13 +682,7 @@ scene("round", () => {
             playerdata.hp = Math.min(playerdata.hp+1,3)
             if(playerdata.coins >= 5) {
                 update=false
-                add([
-                    rect(width()/1.58,height()/1.58),
-                    outline(2),
-                    origin("center"),
-                    pos(width()/2,height()/2),
-                    z(1000)
-                ])
+                
                 let updates = upgrades[Math.floor(Math.random()*upgrades.length)];
                 let upgrade1 = updates[0]
                 let upgrade2 = updates[1]
@@ -666,9 +729,11 @@ scene("round", () => {
                 onClick("upgrade", (btn) => {
                     playerdata.coins -= 5
                     upgradecode[btn.upg]()
+                    playerdata.audiotime = audiop.time()
                     go("round")
                 })
             } else {
+                playerdata.audiotime = audiop.time()
                 go("round")
             }
         }
@@ -686,26 +751,30 @@ scene("round", () => {
     })
     
 
-    onUpdate("mover", (notmark) => {
+    onUpdate("enemy", (notmark) => {
         if (update) {
             notmark.moveTo(player.pos, notmark.speed*level)
         }
     })
 
     onCollide("sword", "enemy", (sword,notmark) => {
-        if (!notmark.rock)
-        notmark.hurt(player.dmg_sword)
+        play("enemyhit")
+        console.log(notmark,notmark.rock)
+        if (!notmark.rock) {notmark.hurt(player.dmg_sword)}     
     })
 
     onCollide("player","coin", (player,coin) => {
+        play("coin1")
         playerdata.coins++
         ctext.use(text(playerdata.coins + "c"))
         destroy(coin)
     })
 
     onCollide("player","enemy",(player,notmark) => {
+        
         destroy(notmark)
         if (!playerdata.inv) {
+            play("playerhit")
             player.opacity = 0.6
             playerdata.inv = true
             player.hurt()
@@ -746,7 +815,8 @@ scene("round", () => {
         scale(3),
         pos(width()/2-180,height()-98),
         {
-            endd:() => {playerdata.hp--;go("round")}
+            endd:() => {playerdata.hp--;play("playerhit");
+            playerdata.audiotime = audiop.time();go("round")}
         },
         "uibtn",
         area()
@@ -757,7 +827,7 @@ scene("round", () => {
         origin("topright"),
         pos(width()/2+183,height()-98),
         {
-            endd:() => {playerdata.hp--;go("end", playerdata)}
+            endd:() => {player.hurt(100)}
         },
         "uibtn",
         area()
@@ -779,12 +849,14 @@ scene("round", () => {
 })
 
 scene("end", (data) => {
+    var audiop = play("music", {loop: true,seek:playerdata.audiotime,volume:0.2})
     add([
-        sprite("bg"),
+        sprite("bg" + Math.floor(Math.floor(playerdata.levels/2),5)),
         pos(0,0),
         z(-5),
         scale(3)
     ])
+    data.levels+=1
 
     add([
         text("Mark has died."),
@@ -793,7 +865,7 @@ scene("end", (data) => {
         origin("center")
     ])
     add([
-        text("He survived " + data.levels + " Level" + (data.levels > 1 || data.levels < 1 ? "s" : "") + "."),
+        text("He survived " + (data.levels) + " Level" + (data.levels > 1 || data.levels < 1 ? "s" : "") + "."),
         pos(width()/2+5, height()/2-50),
         scale(2),
         origin("center")
