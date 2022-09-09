@@ -470,7 +470,7 @@ scene("round", () => {
             else if (chance(level/1.5)) {
                 let notmark;
                 let lvl = Math.floor(playerdata.levels/3)
-                let randr = getRandom(0,lvl)
+                let randr = Math.min(getRandom(0,lvl),5)
                 let mark = enemies[randr]
                 console.log(lvl,mark,randr)
                 notmark = add([
